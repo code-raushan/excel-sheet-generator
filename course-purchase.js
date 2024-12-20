@@ -26,14 +26,32 @@ async function exportPhonesToExcel() {
 
         // Execute query
         const query = `
-      SELECT 
-        "User"."phone",
-        "User"."firstName",
-        "User"."lastName",
-        "User"."email"
-      FROM "User" 
-      WHERE "User"."phone" IS NOT NULL
-      ORDER BY "User"."createdAt" DESC
+SELECT  
+    u."phone",
+    u."firstName",
+    u."lastName",
+    u."email"
+FROM 
+    "User" u
+JOIN 
+    "PaymentOrder" po 
+ON 
+    u."id" = po."userId"
+WHERE 
+    po."type" = 'COURSE'
+    AND po."status" = 'SUCCESSFUL'
+    AND po."gateway" != 'FREE'
+    AND po."createdAt" >= NOW() - INTERVAL '30 days'
+    AND NOT EXISTS (
+        SELECT 1 
+        FROM "UserPlanAccess" upa
+        WHERE upa."userId" = u."id"
+    )
+ORDER BY 
+    po."createdAt" DESC;
+
+
+
     `;
 
         const result = await client.query(query);
