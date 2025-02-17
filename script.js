@@ -13,63 +13,63 @@ const dbConfig = {
     port: process.env.DB_PORT,
 };
 
-async function exportPhonesToExcel() {
+async function exportCoursesToExcel() {
     console.log("function is running")
     const client = new Client(dbConfig);
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Phone Numbers');
+    const worksheet = workbook.addWorksheet('Courses');
 
     try {
-        // Connect to database
         await client.connect();
         console.log("connected to database")
 
-        // Execute query
         const query = `
-      SELECT 
-        "User"."phone",
-        "User"."firstName",
-        "User"."lastName",
-        "User"."email"
-      FROM "User" 
-      WHERE "User"."phone" IS NOT NULL
-      ORDER BY "User"."createdAt" DESC
-    `;
+            SELECT 
+                "Course"."title",
+                "Course"."purchaseMode",
+                "Course"."webPriceINR",
+                "Course"."webPriceUSD",
+                "Course"."slug",
+                "Course"."language"
+            FROM "Course" 
+            WHERE "Course"."type" = 'NORMAL'
+            AND "Course"."status" = 'PUBLISHED'
+            ORDER BY "Course"."createdAt" DESC
+        `;
 
         const result = await client.query(query);
 
         worksheet.columns = [
-            { header: 'First Name', key: 'firstName', width: 20 },
-            { header: 'Last Name', key: 'lastName', width: 20 },
-            { header: 'Email', key: 'email', width: 30 },
-            { header: 'Phone Numbers', key: 'phone', width: 20 }
+            { header: 'S.No', key: 'sno', width: 10 },
+            { header: 'Title', key: 'title', width: 50 },
+            { header: 'Type', key: 'purchaseMode', width: 15 },
+            { header: 'INR Pricing', key: 'webPriceINR', width: 15 },
+            { header: 'USD Pricing', key: 'webPriceUSD', width: 15 },
+            { header: 'Language', key: 'language', width: 15 },
+            { 
+                header: 'Course Link', 
+                key: 'courseLink', 
+                width: 50,
+                style: { font: { color: { argb: '0000FF' }, underline: true } }
+            }
         ];
 
-        result.rows.forEach(row => {
-            if (/[a-zA-Z]/.test(row.phone)) {
-                return;
-            }
-
-            const phoneRegex = /^\+?[\d\s]+$/;
-
-            if (!phoneRegex.test(row.phone)) {
-                return;
-            }
-
-            const cleanPhone = row.phone.replace(/\s/g, '');
-
+        result.rows.forEach((row, index) => {
             worksheet.addRow({
-                firstName: row.firstName,
-                lastName: row.lastName,
-                email: row.email,
-                phone: cleanPhone
+                sno: index + 1,
+                title: row.title,
+                purchaseMode: row.purchaseMode === 'PAID' ? 'Paid' : 'Free',
+                webPriceINR: row.webPriceINR || 'N/A',
+                webPriceUSD: row.webPriceUSD || 'N/A',
+                language: row.language || 'N/A',
+                courseLink: `https://euron.one/course/${row.slug}`
             });
         });
 
         worksheet.getRow(1).font = { bold: true };
 
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `phone_numbers_${timestamp}.xlsx`;
+        const filename = `courses_report_${timestamp}.xlsx`;
         const filepath = path.join(__dirname, filename);
 
         await workbook.xlsx.writeFile(filepath);
@@ -82,4 +82,4 @@ async function exportPhonesToExcel() {
     }
 }
 
-exportPhonesToExcel();
+exportCoursesToExcel();
